@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { complete, aiConfigured } from '@/lib/ai'
+import { rateLimit, getIp } from '@/lib/ratelimit'
 
 const PROMPTS: Record<string, string> = {
   student:
@@ -12,6 +13,9 @@ const PROMPTS: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!rateLimit(getIp(req))) {
+      return NextResponse.json({ error: 'Слишком много запросов. Подождите минуту.' }, { status: 429 })
+    }
     const { text, mode = 'student' } = await req.json()
     if (!text?.trim()) {
       return NextResponse.json({ error: 'Введите текст' }, { status: 400 })
@@ -29,7 +33,8 @@ export async function POST(req: NextRequest) {
 
     const result = (await complete({ system, user: text, temperature: 0.9 })).trim()
     return NextResponse.json({ result })
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Ошибка обработки' }, { status: 500 })
+  } catch (err) {
+    console.error('humanize error:', err)
+    return NextResponse.json({ error: 'Ошибка обработки. Попробуйте ещё раз.' }, { status: 500 })
   }
 }
