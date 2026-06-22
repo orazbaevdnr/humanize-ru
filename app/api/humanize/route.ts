@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { groq, MODEL } from '@/lib/groq'
+import { getGroq, MODEL } from '@/lib/groq'
 
 const PROMPTS: Record<string, string> = {
   student:
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       (PROMPTS[mode] || PROMPTS.student) +
       ' Отвечай ТОЛЬКО переписанным текстом, без вступлений и комментариев. Пиши на том же языке, что и исходный текст.'
 
-    const completion = await groq.chat.completions.create({
+    const completion = await getGroq().chat.completions.create({
       model: MODEL,
       temperature: 0.9,
       messages: [
