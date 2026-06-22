@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getGroq, MODEL } from '@/lib/groq'
+import { complete, aiConfigured } from '@/lib/ai'
 
 const PROMPTS: Record<string, string> = {
   student:
@@ -19,24 +19,15 @@ export async function POST(req: NextRequest) {
     if (text.length > 8000) {
       return NextResponse.json({ error: 'Максимум 8000 символов' }, { status: 400 })
     }
-    if (!process.env.GROQ_API_KEY) {
-      return NextResponse.json({ error: 'Сервис не настроен (нет GROQ_API_KEY)' }, { status: 503 })
+    if (!aiConfigured()) {
+      return NextResponse.json({ error: 'Сервис не настроен (нет AI-ключа)' }, { status: 503 })
     }
 
     const system =
       (PROMPTS[mode] || PROMPTS.student) +
       ' Отвечай ТОЛЬКО переписанным текстом, без вступлений и комментариев. Пиши на том же языке, что и исходный текст.'
 
-    const completion = await getGroq().chat.completions.create({
-      model: MODEL,
-      temperature: 0.9,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: text },
-      ],
-    })
-
-    const result = completion.choices[0]?.message?.content?.trim() || ''
+    const result = (await complete({ system, user: text, temperature: 0.9 })).trim()
     return NextResponse.json({ result })
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Ошибка обработки' }, { status: 500 })
